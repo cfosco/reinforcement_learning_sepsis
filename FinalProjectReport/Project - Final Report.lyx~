@@ -1,0 +1,3106 @@
+#LyX 2.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 508
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\begin_modules
+customHeadersFooters
+endnotes
+foottoend
+\end_modules
+\maintain_unincluded_children false
+\language english
+\language_package default
+\inputencoding auto
+\fontencoding global
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement H
+\paperfontsize default
+\spacing single
+\use_hyperref true
+\pdf_bookmarks true
+\pdf_bookmarksnumbered false
+\pdf_bookmarksopen false
+\pdf_bookmarksopenlevel 1
+\pdf_breaklinks false
+\pdf_pdfborder true
+\pdf_colorlinks false
+\pdf_backref false
+\pdf_pdfusetitle true
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\index Index
+\shortcut idx
+\color #008000
+\end_index
+\leftmargin 2cm
+\topmargin 3cm
+\rightmargin 2cm
+\bottommargin 3cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle fancy
+\tracking_changes false
+\output_changes false
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\end_header
+
+\begin_body
+
+\begin_layout Title
+\paragraph_spacing onehalf
+CS282R Final Project: Interpretable deep RL based policies for Sepsis treatment
+\end_layout
+
+\begin_layout Date
+\paragraph_spacing onehalf
+December 14th, 2017
+\end_layout
+
+\begin_layout Author
+\paragraph_spacing onehalf
+Camilo L.
+ Fosco, Sebastien Baur - Harvard University
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Left Header
+\paragraph_spacing onehalf
+Camilo L.
+ Fosco, Sebastien Baur, - CS282r
+\end_layout
+
+\begin_layout Section
+Abstract 
+\end_layout
+
+\begin_layout Paragraph
+According to www.cdc.gov, about 15% of septic patients die in American ICUs
+ each year.
+ This condition is severe, and treatments are both expensive and challenging.
+ Today, there is no consensus in the medical world on how to treat septic
+ patients, who all respond differently to medications.
+ The recent availability of public data for Sepsis treatment, as well as
+ the advances of deep learning and reinforcement learning, allowed data-driven
+ approaches to produce policies reducing by more than 3% the mortality rate.
+ While the results are promising, neural networks have the inherent drawback
+ of being hard-to-understand black boxes.
+ The treatment policy obtained by these models can seem obscure to physicians,
+ while interpretability looks like an important characteristic when it comes
+ to saving lives.
+ 
+\end_layout
+
+\begin_layout Paragraph
+Recently, the ICNN architecture was proposed, a neural network that is convex
+ with respect to some of its inputs.
+ In the context of deep RL applied to the Sepsis problem, this property
+ can be useful for several reasons: the discrete representation of actions
+ can be replaced by a richer continuous representation, and the output of
+ the Q network can be concave and therefore have a unique maximum, which
+ translates the idea that there is an optimal dose to prescribe to the patient.
+ This work is our effort to improve previous work on the Sepsis challenge
+ by making policies more interpretable with the help of both the ICNN architectu
+re and a different representation of patients.
+ 
+\end_layout
+
+\begin_layout Section
+Introduction 
+\end_layout
+
+\begin_layout Standard
+Sepsis is a severe condition, and treating it is challenging.
+ It can involve, among other: antibiotics to cure the infection, renal therapy
+ for patients having renal failures, mechanical ventilation to assist patients
+ having respiratory troubles, or prescription of medications to correct
+ hypovolemia.
+ As described in Raghu et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "raghu2017continuous"
+
+\end_inset
+
+, here, we tackle the problem of prescribing the good doses of vasopressors
+ and intravenous fluids, which are particularly critical to the patient
+ survival (Waechter et al., 2014 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "waechter2014interaction"
+
+\end_inset
+
+) As there is not really any clear guideline on how these prescriptions
+ should be made, we propose to use a data-driven approach to this problem.
+ 
+\begin_inset Newline newline
+\end_inset
+
+RL seems to be particularly suited to the task, as it involves taking sequential
+ decisions having potentially delayed consequences.
+ While recent advances in deep learning make neural networks powerful function
+ estimators, Mnih et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "mnih2013playing"
+
+\end_inset
+
+ only very recently successfully managed to combine them with Q learning,
+ giving birth to DQN.
+ Van Hasselt et al., Wang et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "van2016deep,wang2015dueling"
+
+\end_inset
+
+ proposed improvements making it more stable, respectively double DQN and
+ dueling double DQN.
+ This last version was used by Raghu et al.
+ to tackle the problem of prescribing vasopressors and intravenous fluids.
+ They also used sparse autoencoders to represent the health states of the
+ patients at a given time point, assuming that these are Markovian.
+ This improved the performance of their DQN algorithm.
+ However, it makes the obtained policy even less transparent.
+\end_layout
+
+\begin_layout Standard
+This is why we proposed two main improvements to this approach: 
+\end_layout
+
+\begin_layout Itemize
+Using variational autoencoders (VAE) (Kingma et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "kingma2013auto"
+
+\end_inset
+
+) instead of sparse autoencoders to represent the whole histories of the
+ patient instead of unique time steps.
+ Encoding the whole histories instead of the values at a given time point
+ makes the Markov assumption more realistic.
+ We believe that using more information may improve the performance of the
+ obtained policies.
+ VAE have two major advantages: they often learn an interpretable latent
+ representation, and they are generative models.
+ Generating new histories would make policy evaluation easier.
+ 
+\end_layout
+
+\begin_layout Itemize
+Using the ICNN architecture Amos et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "amos2016input"
+
+\end_inset
+
+ for our Q network.
+ It implies that actions are continuous, which is a richer and more accurate
+ representation that discrete buckets.
+ While it makes the problem a bit more complex in terms of optimization,
+ it is still quite easy because the Q network is concave.
+ It makes the obtained policy more interpretable, because it translates
+ the idea that the correct dose of medications to prescribe is unimodal
+ and has a unique maximum.
+ It also allows the policy to encode uncertainty, for example when it plateaus
+ around some value; conversely it can encode certainty, when the actual
+ output is peaked around a given dose.
+ 
+\end_layout
+
+\begin_layout Section
+Background and related work 
+\end_layout
+
+\begin_layout Subsection
+Reinforcement learning 
+\end_layout
+
+\begin_layout Standard
+The RL framework involves an agent interacting with its environment at discrete
+ time steps, trying to maximize the cumulative (or discounted) reward that
+ it reaps along the way.
+ At each time step t, the world is in a state 
+\begin_inset Formula $s_{t}$
+\end_inset
+
+, and the agent can take an action 
+\begin_inset Formula $a_{t}$
+\end_inset
+
+ from a given set of allowed actions A.
+ This action allows it to transition to the next state 
+\begin_inset Formula $s_{t+1}$
+\end_inset
+
+, getting a reward 
+\begin_inset Formula $r_{t}$
+\end_inset
+
+ during this transition.
+ The objective of the agent is to maximize the expected sum of discounted
+ rewards, 
+\begin_inset Formula $E[\sum_{t=1}^{T}\gamma^{t}r_{t}$
+\end_inset
+
+] if there is given known time horizon T, or 
+\begin_inset Formula $\sum_{t=1}^{\infty}\gamma^{t}r_{t}$
+\end_inset
+
+ if there is no time limit, where 
+\begin_inset Formula $\gamma$
+\end_inset
+
+ is a discount factor between 0 and 1 that captures the trade-off of immediate
+ vs.
+ delayed rewards.
+ The optimal value function 
+\begin_inset Formula $Q^{*}(s,a)$
+\end_inset
+
+ is the maximum expected discounted reward after executing action a in state
+ s, and then following the optimal policy 
+\begin_inset Formula $\pi^{*}$
+\end_inset
+
+, which consists in choosing actions greedily on Q*.
+ Q* verifies the Bellman optimality equation:
+\begin_inset Formula 
+\[
+Q^{*}(s,a)=E_{s'}[r+\gamma max_{a'}Q^{*}(s',a')]
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In the Sepsis problem, the states can naturally be the set of physiological,
+ lab, and demographic values that are attached to each patient at a given
+ time step.
+ This representation is problematic for different reasons: 
+\end_layout
+
+\begin_layout Itemize
+It assumes that these states are Markovian.
+ What happened to the patient in the past is certainly relevant to its health
+ state.
+ We doubt that using only these values at a given time point gives the physician
+ all the information it would need to make an informed decision.
+\end_layout
+
+\begin_layout Itemize
+Even though they are all the information we can have about the patient,
+ we believe that these quantities do not represent what the patient actually
+ is.
+ We would rather consider them as partial observations of a hidden state.
+ 
+\end_layout
+
+\begin_layout Standard
+We propose variational autoencoders as a solution to both these problems.
+\end_layout
+
+\begin_layout Subsection
+Variational autoencoders 
+\end_layout
+
+\begin_layout Standard
+Kingma et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "kingma2013auto"
+
+\end_inset
+
+ recently introduced a neural network architecture allowing to perform variation
+al inference in an efficient manner.
+ This architecture consists of two neural networks, the encoder that tries
+ to predict the latent variables 
+\emph on
+z 
+\emph default
+from the input 
+\emph on
+x
+\emph default
+, and the decoder that tries to reconstruct the input 
+\emph on
+x
+\emph default
+ from the latent representation 
+\emph on
+z
+\emph default
+ (hence the name autoencoder).
+ The output of both neural network are stochastic.
+ In practice it means that they have several deterministic outputs, that
+ consist in the parameters of a given distribution, for example Gaussian.
+ Then, using the “reparameterization trick”, i.e by introducing some noise
+ as an additional input, the output becomes stochastic.
+ The concatenation of the two neural networks can be trained end to end
+ using backpropagation.
+ The objective function is: 
+\begin_inset Formula 
+\[
+L(x)=KL(q_{\psi}(z|x)\,||\,p(z))-E_{z\sim q_{\psi}(.|x)}[log(p_{\theta}(x|z))]
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where the first RHS term is the KL divergence between the posterior distribution
+ 
+\begin_inset Formula $q_{\psi}(z|x)$
+\end_inset
+
+ (the encoder, parametrized by 
+\begin_inset Formula $\psi$
+\end_inset
+
+) and the prior 
+\begin_inset Formula $p(z)$
+\end_inset
+
+ which is usually a very simple distribution, for example multivariate Gaussian.
+ This terms forces the posterior to be Gaussian, which, once trained, allows
+ to sample new latent codes to generate new data points.
+ The second term is the negative log likelihood.
+ It forces the neural network to have accurate reconstructions of the inputs.
+ 
+\begin_inset Formula $p_{\theta}(x|z)$
+\end_inset
+
+ is the decoder neural network, parametrized by 
+\begin_inset Formula $\theta$
+\end_inset
+
+.
+ The loss L(x) is bound on the log evidence 
+\begin_inset Formula $log(p_{\theta}(x))$
+\end_inset
+
+ (Blei et al., 2017 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "blei2017variational"
+
+\end_inset
+
+) 
+\end_layout
+
+\begin_layout Standard
+One key observation that has been made by training these models, is that
+ the latent representation they learn naturally arranges in meaningful way.
+ For example, the MNIST digits get clustered together in the latent space
+ (Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:The-2D-latent-space-VAE"
+
+\end_inset
+
+), while no information allows the model to distinguish classes.
+ When trained on pictures of faces (Hou et al., 2017 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "hou2017deep"
+
+\end_inset
+
+), the latent representation naturally encodes the color of the hair, whether
+ the person is smiling or not, wearing glasses or not, the angle of the
+ head, etc.
+ On more complex datasets such as molecules, the latent representation will
+ include information such as the function of the molecules or physical propertie
+s.
+ (Gomez Bombarelli et al., 2016 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "gomez2016automatic"
+
+\end_inset
+
+) 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status collapsed
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig1.PNG
+	lyxscale 35
+	width 40page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+The 2D latent space of a VAE trained on the MNIST dataset.
+ The latent space naturally arranges by clustering the digits together.
+ Note that the digits that can be similarly written, share common frontiers.
+ Ex: 9 with 7 and 9 with 8
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:The-2D-latent-space-VAE"
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In the case of the Sepsis problem, we propose using VAEs to encode the histories
+ of the patients.
+ It means that whole histories would be encoded by a latent code 
+\emph on
+z 
+\emph default
+having a simple prior 
+\emph on
+p(z)
+\emph default
+.
+ One of the inputs of our Q network would be this latent representation.
+ By encoding whole histories instead of unique time points, the trained
+ model can then sample new whole histories, or predict the end of a given
+ history, instead of sampling values at a given time point.
+ It therefore makes it possible to generate episodes with a chosen policy,
+ and estimate the mortality associated with this policy.
+ Our model would actually be a conditional VAE (CVAE) (Sohn et al., 2015
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "sohn2015learning"
+
+\end_inset
+
+), which differs from a vanilla VAE in that both the encoder and the decoder
+ have an additional input, their outputs being conditional on this.
+ Consequently, it gives some control on what is generated.
+ In our case, it would allow to see the impact of a given action on the
+ health state of the patient.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig2.PNG
+	lyxscale 35
+	width 30page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Generation conditioned on the digit 9.
+ Contrary to Figure 1, the latent code no longer encodes anything relative
+ to what the digit is, but rather to how the digits looks.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Input Convex Neural Networks
+\end_layout
+
+\begin_layout Standard
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+Add FICNN
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The Input Convex Neural Network (ICNN) is an architecture proposed by Amos
+ et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "amos2016input"
+
+\end_inset
+
+ that makes a neural network convex with regard to some of its inputs.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig3.PNG
+	lyxscale 35
+	width 40page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+A neural network convex w.r.t 
+\emph default
+y
+\emph on
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The network is convex if its layers verify:
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Graphics
+	filename figure/ICNN formulas.png
+	width 60page%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where 
+\begin_inset Formula $\circ$
+\end_inset
+
+ is the element-wise product, and 
+\begin_inset Formula $\tilde{g}_{i},\,g_{i}$
+\end_inset
+
+ are non-decreasing convex nonlinear functions.
+ As we want the neural network to be concave, we take 
+\begin_inset Formula $-z_{k}$
+\end_inset
+
+ instead of 
+\begin_inset Formula $z_{k}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig4.PNG
+	lyxscale 35
+	width 60page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Output of the ICNN with randomly initialized weights.
+ The x axis of each graph is one of the inputs for which the model is concave.
+ The other one is fixed, and is the same in each graph.
+ Each graph represents a different state.
+ One can notice that the output can be more or less peaked.
+ If the policy is chosen to be proportional to Q then plateaus correspond
+ to uncertainty about the optimal dose, and peaks correspond to certainty.
+ The output can be monotonic if the optimal dose to prescribe is either
+ the maximal or minimal possible dose.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection
+Policy evaluation 
+\end_layout
+
+\begin_layout Standard
+The challenge of accurate policy evaluation is an active area of research
+ in Reinforcement Learning, and off-policy evaluation - evaluating the strategy
+ when it is too costly to test it on the real world situation it is designed
+ for - is one of the main problems currently being analyzed.
+ The central idea of this field is to use data generated from a certain
+ policy to estimate the value of a new one.
+ There is a large amount of work in that area: methods such as importance
+ sampling/weighting (Precup et al., 2000 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "precup2000eligibility"
+
+\end_inset
+
+), Doubly Robust Estimator (Jiang et al., 2015 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "jiang2015doubly"
+
+\end_inset
+
+) and the MAGIC estimator (Thomas et al., 2016 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "thomas2016data"
+
+\end_inset
+
+) have been shown to produce accurate estimations and possess beneficial
+ properties, from unbiased, consistent estimations to lower variance in
+ values.
+ In this project, we mainly focused on the Doubly Robust (DR) and Weighted
+ Doubly Robust (WDR) estimators.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Importance sampling 
+\end_layout
+
+\begin_layout Standard
+Importance sampling is typically presented as a method for reducing the
+ variance of the estimate of an expectation by carefully choosing a sampling
+ distribution (Rubinstein et al., 1981).
+ The idea is to choose a distribution 
+\begin_inset Formula $q(x)$
+\end_inset
+
+ to reduce the variance of the estimate of 
+\begin_inset Formula $\int f(x)p(x)dx$
+\end_inset
+
+, and can be viewed as trying to approximate 
+\begin_inset Formula $\int f(x)\frac{p(x)}{q(x)}q(x)$
+\end_inset
+
+ with samples drawn from 
+\begin_inset Formula $q(x)$
+\end_inset
+
+.
+ As long as 
+\begin_inset Formula $p(x)$
+\end_inset
+
+ and 
+\begin_inset Formula $q(x)$
+\end_inset
+
+ have the same support, this estimation is unbiased.
+ In our setting, we can consider that every policy induces a probability
+ distribution over histories.
+ We want to estimate the expected return of an evaluation policy given the
+ history probability induced by a behavior policy.
+ importance sampling allows us to handle the mismatch between samples generated
+ from these two different policies.
+ The statistical approach to importance sampling is to find an appropriate
+ 
+\begin_inset Formula $q(x)$
+\end_inset
+
+ to reduce variance given an estimator - in our case, we have a fixed q
+ stemming from the behavior policy, and we are trying to determine the value
+ of the estimator itself given our data.
+ A variant of IS, Weighted importance sampling, weights each sample by the
+ sum of 
+\begin_inset Formula $\frac{p(x)}{q(x)}$
+\end_inset
+
+ for the dataset.
+ This produces a biased estimator, but a faster, consistent and more stable
+ one than the high-variance IS.
+ These importance sampling estimator is a key concept underlying both estimators
+ utilized in this work.
+\end_layout
+
+\begin_layout Subsubsection
+Doubly Robust Estimator
+\end_layout
+
+\begin_layout Standard
+This estimator aims to provide a solid approximation of a given policy by
+ leveraging two techniques that are known two work in two different situations.
+ One approach to OPE is to try to fit an MDP to the dataset, and evaluate
+ the target policy on the resulting model.
+ This has usually low variance, but is dependent on a correct modeling of
+ the transitions and rewards of the underlying process.
+ The other approach is the IS method discussed previously - unbiased and
+ independent of characteristics of the underlying model, but with high variance
+ and dependent on the similarity between the evaluation and behavior policies.
+ The novelty of DR is to combine these approaches to benefit from both worlds:
+ the resulting estimator designed by Jiang and Li attains high accuracy
+ while remaining unbiased.
+ The latest formulation for this estimator is as follows:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+DR(D):=\sum_{i=1}^{n}\sum_{t=0}^{\infty}\gamma^{t}\omega_{t}^{i}R_{t}^{H}-\sum_{i=1}^{n}\sum_{t=0}^{\infty}\gamma^{t}\left(\omega_{t}^{i}\hat{q}^{\pi_{e}}(S_{t}^{H_{i}},A_{t}^{H_{i}})-\omega_{t-1}\hat{v}^{\pi_{e}}(S_{t}^{H_{i}})\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where 
+\begin_inset Formula $\omega_{t}=\rho_{t}^{i}/n$
+\end_inset
+
+, n being the amount of histories (or trajectories), 
+\begin_inset Formula $\rho_{t}^{i}$
+\end_inset
+
+ being the importance weight for the first t steps of trajectory i (probability
+ of first t steps of history H under policy 
+\begin_inset Formula $\pi_{e}$
+\end_inset
+
+), S and A are the states and actions of a history, 
+\begin_inset Formula $\gamma$
+\end_inset
+
+ is the discount factor, and 
+\begin_inset Formula $\hat{q},\hat{v}$
+\end_inset
+
+ are estimations of the Q and V functions of the underlying MDP.
+ As can be understood from the equation, both OPE approaches described are
+ present here, as the importance weights and the q,v estimations influence
+ the value of the final estimator.
+\end_layout
+
+\begin_layout Subsubsection
+Weighted Doubly Robust Estimator
+\end_layout
+
+\begin_layout Standard
+The weighted doubly robust estimator is different to DR in that it incorporates
+ the concept of Weighted Importance sampling .
+ It extends the DR concept by weighting the 
+\begin_inset Formula $\omega_{t}^{i}$
+\end_inset
+
+ coefficients such that 
+\begin_inset Formula $\omega_{t}^{i}=\rho_{t}^{i}/\sum_{j=1}^{n}\rho_{t}^{j}$
+\end_inset
+
+.
+ WDR is not an unbiased estimator, but as mentioned by the authors, the
+ absence of bias is not paramount, as one of the advantages of unbiased
+ methods, computing confidence bounds on 
+\begin_inset Formula $v(\pi_{e})$
+\end_inset
+
+, only comes into play when the volume of data is high, which is impractical
+ in real world situations.
+ WDR produces better estimates of 
+\begin_inset Formula $v(\pi_{e})$
+\end_inset
+
+ when measured through MSE, which is ultimately the objective, as it gets
+ closer to the balance in bias-variance trade-off that approaches optimality
+ on the estimation.
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+In the Sepsis problem, the situation is appropriate for evaluating the policy
+ with these techniques, as we possess a large amount of data acquired with
+ one or multiple policies different than the one we want to evaluate.
+ The challenge lies in identifying the correct behavior policy.
+ We particularly investigated DR and WDR.
+ It is important to notice that in our setting, both states and actions
+ are continuous, and as such, the estimators must be applied having this
+ in mind.
+\end_layout
+
+\begin_layout Subsection
+Deep RL for the Sepsis problem 
+\end_layout
+
+\begin_layout Standard
+The recent advances of deep RL, and more specifically dueling double DQN
+ (van Hasselt et al., Wang et al., Mnih et al., Schaul et al.
+ 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "van2016deep,wang2015dueling,mnih2013playing,schaul2015prioritized"
+
+\end_inset
+
+), were used by Raghu et al.
+ to learn policies on the Sepsis dataset.
+ The states were either the 50 demographics, vitals, lab values of the MIMIC
+ dataset (see part ‘dataset’), or the encoded version of these.
+ The action space was quantized so that each medication dose fits in one
+ of the five bins, leading to a total of 25 possible actions.
+ Obtained policies were evaluated to reduce by 3.6% the mortality rate, which
+ is very encouraging.
+\end_layout
+
+\begin_layout Standard
+However, this approach has the downfall of being difficult to interpret
+ and analyze - the policies obtained cannot be evaluated in a very rigorous
+ manner, as their analysis depends highly on the behavior of the clinician's
+ policy, and approximating that policy with the MIMIC dataset is no trivial
+ task.
+ Besides, the best model used encoded vitals/demographics/lab values, which
+ makes the behavior of the network harder to interpret.
+ There is no clear way of understanding the reasoning of the approach, which
+ is critical in a medical environment, and the distribution of actions generated
+ by the network may not adhere to certain critical concepts known by clinicians.
+ 
+\end_layout
+
+\begin_layout Standard
+This is the motivation for the VAE idea: being a action-conditioned generative
+ model, our VAE would allow us to generate new histories to evaluate policies.
+ As the latent representation it learns naturally arranges in a meaningful
+ way, our state representation may be more interpretable for physicians.
+ As it would allow to encode full histories, the Markovian assumption is
+ no longer a problem.
+ 
+\end_layout
+
+\begin_layout Standard
+Discussions with physicians led to the hypothesis that there must be one
+ optimal dose of medication to prescribe to the patient - this dose can
+ be 0.
+ Indeed, it seems unlikely that two extremely different doses may have similar
+ beneficial effects.
+ We therefore suppose that the optimal policy should be unimodal.
+ This is motivates the use of the ICNN for our Q-network: it makes it concave,
+ and therefore has a unique maximum on the interval of possible actions.
+ 
+\end_layout
+
+\begin_layout Subsection
+Dataset
+\end_layout
+
+\begin_layout Standard
+We worked with the MIMIC database (ref).
+ As preprocessing steps, we: 
+\end_layout
+
+\begin_layout Itemize
+Dropped all patients having unrealistic values in any column (negative values
+ or values well beyond ranges of acceptable values)
+\end_layout
+
+\begin_layout Itemize
+Logged exponentially distributed quantities.
+ If they could be zero, we first added the minimum of the dataset.
+\end_layout
+
+\begin_layout Itemize
+Standard scaled all numerical quantities (operation that was performed after
+ the log for the quantities that were logged) 
+\end_layout
+
+\begin_layout Standard
+The features are all the columns except those that are action-related (fluids
+ or vasopressors).
+ “Binary actions” (mechanical ventilation, sedation, renal therapy) were
+ included in the state space.
+ In total, it represents 50 demographics, vitals, and lab values.
+ 
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+More details
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+Development and Results
+\end_layout
+
+\begin_layout Subsection
+The VAE Approach
+\end_layout
+
+\begin_layout Standard
+Our VAE is trained to reconstruct full histories h.
+ It is conditioned on actions a.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig5.PNG
+	lyxscale 50
+	width 60page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Architecture of the VAE.
+ The histories h are encoded in a latent space.
+ The latent representation z, comprises the states we use as inputs of our
+ DQN (instead of the initial 50 features).
+ The decoder first up-samples the latent code to make it the same dimension
+ as the history, and concatenates them on the channel axis.
+ The obtained array is passed to an autoregressive model that predicts the
+ difference between the t-th and the t+1-th time step from the t first time
+ steps.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The loss is constructed as the MSE between true and generated histories,
+ and the KL divergence between the latent code and a multivariate standard
+ Gaussian: 
+\begin_inset Formula 
+\[
+L(h,h')=(h-h')^{2}+KL(q_{\psi}(z|h)\,||\,N(0,I_{d}))
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where 
+\emph on
+d 
+\emph default
+is the dimension of the latent space, and 
+\begin_inset Formula $q_{\psi}(z|h)$
+\end_inset
+
+ is the output distribution of the encoder.
+ As in Kingma et al., we used a Gaussian distribution.
+ In practice, the encoder has two outputs: the parameters 
+\begin_inset Formula $\mu_{\psi}(h),\,\sigma_{\psi}(h)$
+\end_inset
+
+ of the Gaussian distribution.
+ The reparameterization trick allows us to have 
+\begin_inset Formula $z|h\sim N(\mu_{\psi}(h),\sigma_{\psi}(h))$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+The encoder is a convolutional neural network.
+ As the inputs don’t have the same length (patients stays have different
+ durations), they were padded with 0.
+ We realized a bit late that it is not sensible because most of the variables
+ are continuous rather than binary.
+ Some possible fixes may be: 
+\end_layout
+
+\begin_layout Itemize
+Grouping histories by length during training 
+\end_layout
+
+\begin_layout Itemize
+Padding and masking the loss corresponding to the appended zeros 
+\end_layout
+
+\begin_layout Itemize
+Using a recurrent neural network as the encoder 
+\end_layout
+
+\begin_layout Itemize
+Using layers that have a known fixed size whatever the input dimension is,
+ for example max pooling over time.
+ 
+\end_layout
+
+\begin_layout Standard
+Unfortunately, we didn’t have time to explore these different options, which
+ are necessary steps to having a working model.
+\end_layout
+
+\begin_layout Standard
+The decoder is an autoregressive model.
+ It was trained to predict 
+\begin_inset Formula $h-\Delta h$
+\end_inset
+
+ from 
+\emph on
+z
+\emph default
+ and 
+\emph on
+a
+\emph default
+, where 
+\begin_inset Formula $\Delta h$
+\end_inset
+
+ is a shifted version of the history (its t-th component is the value of
+ the t-1-th component of h).
+ This way, it learns to predict relative perturbations rather than absolute
+ values.
+ We hope that learning perturbations will help to generalize better.
+ When generating a new history, it does so sequentially, one step at a time.
+ 
+\end_layout
+
+\begin_layout Standard
+At first, we used an LSTM (Hochreiter et al.
+ 1997 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "hochreiter1997long"
+
+\end_inset
+
+) as our decoder architecture, but it was too powerful - it didn’t use the
+ latent code z at all during decoding (the output was constant with regard
+ to the latent code).
+ Consequently, we tried less powerful stacks of causal dilated convolutions
+ (Van den Oord et al, 2016 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "oord2016wavenet"
+
+\end_inset
+
+), with varying receptive field sizes.
+ However, the model did not use the latent information anyway, even with
+ very small receptive fields.
+ 
+\end_layout
+
+\begin_layout Standard
+It is still unclear to us why the VAE didn’t use the latent code during
+ training.
+ A discussion with Yoon Kim from the Harvard NLP group made us conclude
+ that there is a problem on how we perform inference on the latent representatio
+n.
+ Our latent representation may not be adapted to the temporal structure
+ of our inputs, for several reasons: 
+\end_layout
+
+\begin_layout Itemize
+The encoder is convolutional and the inputs are padded with zeros, which
+ means that extra meaningless information is encoded in the latent representatio
+n.
+ The shorter the history, the more the latent code contains meaningless
+ information.
+ 
+\end_layout
+
+\begin_layout Itemize
+In the decoder, we up-sample this latent code before concatenating it to
+ the history (on channel axis) and passing it to the autoregressive model.
+ This is not really sensible since the history has a temporal structure
+ and the latent code does not.
+ We believe that it would be more sound to either not upsample the code
+ at all - and rather repeat it at each time step, as is commonly done in
+ NLP - or have a latent code per time step.
+ Our time series being multidimensional, it may be wiser to use a latent
+ code per time step.
+ In that case, the decoder should perform inference on the code as well.
+ 
+\end_layout
+
+\begin_layout Standard
+Variational autoencoders had recently some success on temporal-structured
+ data.
+ Using a model more like the one described in Chung et al., or Krishnan et
+ al., or Fabius et al.
+ (
+\begin_inset CommandInset citation
+LatexCommand cite
+key "krishnan2017structured,fabius2014variational"
+
+\end_inset
+
+) may lead to better results.
+ These models all use RNN for both the encoder and the decoder.
+ The latent code is either global (one for the whole sequence), or local
+ (one for each time step).
+ In the second case, the decoder performs inference on the latent code as
+ well.
+ This is something we would like to investigate further in the future.
+ 
+\end_layout
+
+\begin_layout Standard
+In conclusion, the VAE approach was not fruitful.
+ We think it is still worth mentioning it because it could lead to interesting
+ developments in the future.
+ As we could use only the vitals/lab values/demographics as inputs of our
+ Q network, we didn’t investigate further this path, and focused on the
+ Deep Q Learning part of the project.
+ 
+\end_layout
+
+\begin_layout Subsection
+Deep Q Learning with ICNN 
+\end_layout
+
+\begin_layout Standard
+We started by implementing our own DQN and ICNN using PyTorch.
+ At the time, we were working on the Sepsis problem.
+ As we will soon explain, we met problems we initially couldn’t find the
+ cause of, so we decided to tackle a simpler problem.
+ That’s why we designed the “moving particle” problem, described in one
+ of the next paragraphs.
+ We also applied the network to a modified version of MountainCarContinuous,
+ from OpenAI.
+ The policies obtained here were good but not ideal, so we decided to compare
+ our ICNN to the original implementation.
+ We therefore created a Tensorflow model adapted from the ICNN of LocusLab
+ (github), the original implementation that came out with the paper.
+ We managed to get interesting policies with this method.
+ Here are some hyperparameters we used, independently of the problem.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float table
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="11" columns="2">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top" width="30page%">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Parameters
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Values
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Gamma
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+0.99
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Update Frequency
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+100 or 200 steps if updated periodically, 
+\begin_inset Formula $\tau=10^{-2}$
+\end_inset
+
+ or 
+\begin_inset Formula $10^{-3}$
+\end_inset
+
+ if updated after each batch
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Hidden dimension
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+20 to 100 (closer to 20 for simpler problems, to 100 for Sepsis problem)
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Number of layers
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+2 to 3
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Optimization algorith to find the maximal action
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+RProp, max 8-10 steps (PyTorch) / Adam, max 8-10 steps (Tensorflow) 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Learning Rate
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+1e-4, 1e-3 or 1e-2
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Batch size
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+32, 64, or 256
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Prioritized Experience Replay Parameters
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Default 
+\begin_inset Formula $\alpha$
+\end_inset
+
+=0.6, 
+\begin_inset Formula $\epsilon=10^{-2}$
+\end_inset
+
+, and starting at 0.9and annealing linearly to 1 in 105batches
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+RMIN, RMAX, intermediate rewards
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-15, 15, 0 for Sepsis problem Different schemes for the two other problems
+ 
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Nonlinearities
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+LeakyReLU(0.01), Softplus, or ReLU
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+Range of hyperparameters used.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+It is interesting to remark that RProp was the fastest algorithm to find
+ the maximum of Q(s, .) (tested empirically against all the other optimization
+ algorithms proposed in PyTorch).
+ The Tensorflow implementation used Adam, and we didn’t change it.
+ The weights of the target network were updated either periodically, or
+ after each batch.
+ In the 2nd case, we have:
+\begin_inset Formula 
+\[
+\theta_{i+1}^{-}\leftarrow(1-\tau)\theta_{i}^{-}+\tau\theta_{i+1}
+\]
+
+\end_inset
+
+where 
+\begin_inset Formula $\tau$
+\end_inset
+
+ is either 
+\begin_inset Formula $10^{-2}$
+\end_inset
+
+ or 
+\begin_inset Formula $10^{-3}$
+\end_inset
+
+ .
+ This choice had no significant impact on the training process.
+\end_layout
+
+\begin_layout Subsubsection
+Sepsis problem 
+\end_layout
+
+\begin_layout Standard
+Trying to train our Q network, we met mainly two related problems.
+ Even though we use double DQN, both the target and the main Q networks
+ tends to become very quickly overconfident after a few steps of training.
+ Besides, the output of the Q network (both target and main) is most of
+ the time linear rather than U-shaped, which is not really what we expect.
+ 
+\end_layout
+
+\begin_layout Standard
+In most of our experiments, we observed that Q tends to become overconfident
+ very quickly, and even tends to diverge.
+ The first solution we tried was to add a sigmoid nonlinearity at the output,
+ scaled to the range 
+\begin_inset Formula $[R_{MIN},R_{MAX}]$
+\end_inset
+
+.
+ It makes the outputs non-concave, but still very easy to optimize as a
+ nondecreasing function of a concave function.
+ In terms of expressiveness, it is very similar or even better.
+ It allows to translate uncertainty, and the output is still unimodal.
+ It clips the values and therefore removes the explosion problem.
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+What is the explosion problem?
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig6.PNG
+	lyxscale 50
+	width 60page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Output of the model with an additional sigmoid layer, with randomly initialized
+ weights.
+ The different possible shapes are still very interpretable.
+ In A, the model is quite certain that nothing should be given to the patient,
+ in B it has no idea, in C and D it should give about the same quantity,
+ but in D it is not very accurate.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+However, it raises a new problem: saturation at RMAX, making the problem
+ very hard to optimize (vanishing gradients).
+ We tried two things to solve the saturation problem: 
+\end_layout
+
+\begin_layout Itemize
+We added batch normalization layers, that temper the vanishing gradient
+ problem.
+\end_layout
+
+\begin_layout Itemize
+We first logit the prediction and the target before computing the MSE.
+\end_layout
+
+\begin_layout Standard
+None of these two approaches worked, we therefore got rid of the sigmoid
+ output.
+ 
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+Show results.
+ Why didn't they work?
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Instead, we clipped the targets to the range 
+\begin_inset Formula $[R_{MIN},R_{MAX}]$
+\end_inset
+
+, and added to the loss a term penalizing the predictions outside of the
+ range 
+\begin_inset Formula $[R_{MIN},R_{MAX}]$
+\end_inset
+
+.
+ The loss therefore became:
+\begin_inset Formula 
+\[
+(Q_{\theta}(s,a)-r-\gamma Q_{\theta^{-}}(s',argmax_{a'}Q_{\theta}(s',a')))^{2}+c\cdot(Q_{\theta}(s,a)-R_{MAX})^{2}I_{Q_{\theta}(s,a)>R_{MAX}}+c\cdot(Q_{\theta}(s,a)-R_{MIN})^{2}I_{Q_{\theta}(s,a)<R_{MIN}}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where 
+\begin_inset Formula $Q_{\theta}$
+\end_inset
+
+ is the main network, and 
+\begin_inset Formula $Q_{\theta^{-}}$
+\end_inset
+
+ is the target network.
+ 
+\begin_inset Formula $I_{A}$
+\end_inset
+
+ is the indicator of the condition A, which is 1 if A is true, and 0 otherwise.
+\end_layout
+
+\begin_layout Standard
+With 
+\emph on
+c
+\emph default
+ high enough, this trick removed the divergence problem.
+ However, the network stays overconfident and we observed that the output
+ saturated at 
+\begin_inset Formula $R_{MAX}$
+\end_inset
+
+.
+ To understand this, note that predicting always 
+\begin_inset Formula $R_{MAX}$
+\end_inset
+
+ yields a small loss.
+ Indeed, for survival terminal transitions, that represent about 8% of the
+ dataset, the loss will be 0.
+ For non-terminal transitions, that represent about 90% of the dataset,
+ its loss will be 
+\begin_inset Formula $(1-\gamma)^{2}R_{MAX}^{2}$
+\end_inset
+
+, which is quite small too, as we have 
+\begin_inset Formula $1-\gamma=0.01$
+\end_inset
+
+.
+ Only for death terminal transitions, the loss is very important: 
+\begin_inset Formula $(R_{MAX}-R_{MIN})^{2}$
+\end_inset
+
+.
+ However, these transitions represent only about 2% of the dataset.
+ As there is initially no priority on the transitions, the model is presented
+ with 98% of transitions for which predicting RMAX will lead to small error.
+ It therefore very quickly saturates.
+ 
+\end_layout
+
+\begin_layout Standard
+To alleviate this problem, we tried several things: 
+\begin_inset Note Note
+status open
+
+\begin_layout Plain Layout
+What does saturation at RMAX mean?
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Itemize
+First, we prioritized terminal transitions before any training.
+ This did not help, we continued to observe Q saturation at 
+\begin_inset Formula $R_{MAX}$
+\end_inset
+
+.
+ An idea that we have not explored may be to prioritize only death terminal
+ transitions.
+ 
+\end_layout
+
+\begin_layout Itemize
+We also tried to start with a buffer containing equal proportions of terminal
+ and nonterminal.
+ Then, new batches of data were added as training went on.
+ Unfortunately, it led to the same result.
+ 
+\end_layout
+
+\begin_layout Itemize
+We also tried to reduce the learning rate from 
+\begin_inset Formula $10^{-2}$
+\end_inset
+
+ to 
+\begin_inset Formula $10^{-3}$
+\end_inset
+
+ and 
+\begin_inset Formula $10^{-4}$
+\end_inset
+
+ and clipped the gradients, while increasing the PER prioritization parameter
+ 
+\begin_inset Formula $\alpha$
+\end_inset
+
+.
+ The objective was to force PER to show the neural network many death terminal
+ transitions before it starts being over confident.
+ While it helped alleviating the problem, the final result was again the
+ same: saturation of the neural network at 
+\begin_inset Formula $R_{MAX}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+Clipping the targets to the range 
+\begin_inset Formula $Q_{\theta}-1,Q_{\theta}+1$
+\end_inset
+
+ also helped to reduce the speed at which the Q networks becomes overconfident,
+ but it leads to the same final result.
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\size small
+Linear outputs situation: 
+\series default
+\size default
+We observed that, during training, the action maximizing Q was always one
+ of the four extreme actions (as the actions are 2 dimensional, there are
+ 4 extreme actions).
+ This suggested that the output of the neural network was always linear,
+ and not U-shaped.
+ As “doing nothing” is the most chosen action in the dataset, it is not
+ very surprising: the policy of the physician could often be represented
+ as a linear decreasing function of a.
+ We, however, expected the neural network to learn U-shaped curves.
+ We first verified in several settings of the hyperparameters whether the
+ output of randomly initialized neural networks tended to be rather monotonic
+ or U-shaped.
+ This property seems to be strongly dependent on the number of layers, the
+ dimensions of hidden layers, and the scale of the distribution of the initial
+ random weights.
+ We couldn’t find a proper way to always start with U curves.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Cosinus function approximation
+\end_layout
+
+\begin_layout Standard
+We tried to test the ability of the neural network to learn U-shaped concave
+ function.
+ For this, we designed a supervised learning problem, where the inputs were
+ 
+\begin_inset Formula $a_{1},a_{2},s$
+\end_inset
+
+, and the neural network tries to learn 
+\begin_inset Formula $-a_{1}^{2}-a_{2}^{2}+cos(10s)$
+\end_inset
+
+.
+ We generated a dataset of 4 million examples with random 
+\begin_inset Formula $a_{1},a_{2},s$
+\end_inset
+
+ in the range [-1,1], and we trained the network in a supervised manner
+ over 16000 training steps.
+ This, finally, gave positive results and put us back on track with the
+ ICNN approach.
+ The results are as follows:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/Results on cos prediction 2.png
+	width 60page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Results of the ICNN approximation of the modified cosinus function.
+ The green curve is the original function, the orange one is the ICNN approximat
+ion.
+ Here, we are plotting different cases with random 
+\begin_inset Formula $s$
+\end_inset
+
+ and 
+\begin_inset Formula $a_{2}$
+\end_inset
+
+ values, and we vary 
+\begin_inset Formula $a_{1}$
+\end_inset
+
+ from [-1,1].
+ As can be seen, in this case, the network appears to correctly learn the
+ function to approximate.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The model correctly approximates most of the curves with low deviation.
+ The loss was calculated as the MSE over a set of 10000 random testing examples,
+ and the final loss was of the order of 
+\begin_inset Formula $10^{-2}$
+\end_inset
+
+.
+ The model was indeed able to learn this function, but was still producing
+ monotonic curves on Sepsis.
+ To rule out the possibility of the ICNN just not being adapted to the Sepsis
+ dataset, we constructed two more simple problems to observe the behavior
+ of the network with more detail and increased interpretability.
+ 
+\end_layout
+
+\begin_layout Subsubsection
+Moving particle problem 
+\end_layout
+
+\begin_layout Standard
+
+\noun on
+Setup:
+\noun default
+ We first constructed a 2-dimensional motion problem, which consists of
+ a particle that has to reach a blue zone delimited by a circle.
+ The agent moves in the square 
+\begin_inset Formula $[-1,1]^{2}$
+\end_inset
+
+, controlled by acceleration (the actions are 
+\begin_inset Formula $a_{x},a_{y}$
+\end_inset
+
+ and are continuous, in the range [-1,1]).
+ Its speed is also bounded by [-1,1] on both x and y axis.
+ When hitting a wall, the particle is elastically reflected.
+ The state space is 4D (position and speed), and the action space 2D.
+ The particle gets reward for reaching the disk of radius 0.5, centered at
+ 0.
+ Touching the circle leads to the end of the episode, with reward 1.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig7.PNG
+	width 35page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Random trajectory of a particle, starting at the green dot and finishing
+ at the red dot.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+To simulate the experience replay situation we were having with the Sepsis
+ case, we generated a few thousands episodes randomly before training, and
+ filled the PER buffer with these.
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\noun on
+Discussion:
+\noun default
+ On this very simple problem, we still observed that our Q network outputs
+ were linear.
+ It made the particle travel around in half-circles, learning nothing useful.
+ It seemed not to take the rewards into consideration at all.
+ As rewards were very sparse (just as in the Sepsis problem), we kicked
+ off the debugging process by modifying the reward scheme to see if it could
+ help the agent learn a sensible policy.
+ We tried two things: 
+\end_layout
+
+\begin_layout Itemize
+We added a penalty based on the distance to the disk.
+ This should have forced the agent to go to the disk as fast as possible.
+ Unfortunately, it has absolutely no impact at all on the learned policy.
+ 
+\end_layout
+
+\begin_layout Itemize
+We penalized extreme actions by adding a penalty on the square of the accelerati
+on.
+ Again, we obtained linear outputs, the extreme action just being shrinked
+ towards 0.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig8.PNG
+	lyxscale 50
+	width 35page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Learned policy on the particle problem.
+ The episode was not stopped when reaching the disc to observe the agent's
+ behavior.
+ As can be seen, the particle is always accelerating at the minimum or maximum
+ possible value, and thus its position takes the form of quadratic curves.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As this setting did not give us further intuition on the problems of the
+ ICNN, we tried to observe its behavior on another .
+\end_layout
+
+\begin_layout Subsubsection
+Mountain Car problem 
+\end_layout
+
+\begin_layout Standard
+
+\noun on
+Setup:
+\noun default
+ We used the open source Gym from OpenAI, and more specifically the problem
+ MoutainCarContinuous depicted below.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig9.PNG
+	lyxscale 50
+	width 50page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Mountain Car Continuous.
+ The starting point is in A.
+ The agent gets a positive reward if it reaches the flag.
+ If it just accelerates blindly, it reaches B, and then the gravity compensates
+ its acceleration, and it falls back to A.
+ On the original environment, the agent gets a negative reward at each time-step
+ that is equal to the square of its current acceleration (action).
+\begin_inset CommandInset label
+LatexCommand label
+name "fig:Mountain-Car-Continuous."
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+As there is a negative reward on the square of the acceleration, the optimal
+ strategy consists in using gravity to reach the flag, by increasingly oscillati
+ng around the starting position.
+ The state space is the position (1 dimensional value, in the range [-1.2,
+ 0.6]) and the car velocity (1 dimensional value in the range [-0.07, 0.07]).
+ The action space is one dimensional: it is just the positive or negative
+ value of the acceleration of the car.
+ Acceleration is in the range [-1,1].
+ The reward for reaching the flag is 100, and as was mentioned, there is
+ a penalty proportional to the square of the acceleration.
+ This penalty poses an exploration challenge: if the agent does not reach
+ the flag fast enough, it soon learns to stay in its starting position,
+ since it gives it a zero reward instead of a negative one.
+ As we wanted to make the problem even simpler, we removed the penalty on
+ actions by adding the square of the acceleration to the reward returned
+ by the OpenAI environment.
+ 
+\end_layout
+
+\begin_layout Standard
+We pre-filled the experience buffer with 100000 random transitions, and
+ it is important to note that the agent never reached the flag in these
+ episodes.
+ We used similar hyperparameters as in our other experiments, but with a
+ smaller network (lower hidden dimension) as the problem is simpler.
+ To force exploration, actions are noisy and the noise has momentum : if
+ it was positive at a given time step, it is more likely to be positive
+ at the next.
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\noun on
+Discussion
+\noun default
+: As we obtained exactly the same results as in our other experiments, we
+ ended up concluding that there was a hidden problem we couldn't see in
+ our code.
+ We therefore switched to an adapted version of the Tensorflow ICNN implementati
+on shared by LocusLab.
+ We made some progress, learning decent policies.
+ However they are still far from what we expect them to be.
+ They generalize quite badly and sometimes take absurd decisions.
+ Besides, the training process was extremely unstable.
+ The evolution of the actions and Q values over training can be seen in
+ the next figure.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig10.PNG
+	lyxscale 50
+	width 60page%
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+\emph on
+A)
+\series default
+ shows the log of the training loss (moving average with window 100), 
+\series bold
+B
+\series default
+) is the TD error, 
+\series bold
+C)
+\series default
+ shows the cumulative reward, and 
+\series bold
+D)
+\series default
+ is the action chosen by the agent.
+ On the 4 graphs, the x axis is the number of training batches.
+ There are 3 phases of good performance, where the agent actually reaps
+ many rewards (around steps 50000, 65000, and 90000).
+ These are followed by forgetting - the agent stops exploiting the strategy
+ that leads to high reward.
+ Note that the total loss at these times is not always decreasing, which
+ is bewildering.
+ It means that the agent can learn without its loss visually decreasing.
+ We believe that a low loss should be strongly correlated with good performance
+ for the agent to be able to learn something.
+ Minimizing the loss should be a proxy for maximizing the cumulated reward.
+ Note that most of the time (graph D), the agent is just accelerating blindly,
+ and it is just when it stops doing so that it starts learning something
+ useful and obtaining rewards.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For a very long time, the agent just accelerates blindly, thus oscillating
+ between points A and B visible in Figure 
+\begin_inset CommandInset ref
+LatexCommand ref
+reference "fig:Mountain-Car-Continuous."
+
+\end_inset
+
+.
+ Sometimes, it does the same but in the other direction.
+ At some point, it tries going backwards instead (it may be due to noise).
+ After having reached a far left position, it starts accelerating again,
+ which allows it to reach the flag at last.
+ After having reached it once, it starts exploiting the high reward path
+ found many times in a row, until catastrophic forgetting happens and the
+ agent starts accelerating blindly again.
+ Over 100000 batches, there are several cycles of this phenomenon.
+ Obtaining a decent policy therefore requires to stop training at a smart
+ moment: when the agent reaps many rewards in a short time interval.
+ We observed the policies obtained at these smart moments to see whether
+ they looked sensible or not.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig11.PNG
+	lyxscale 50
+	width 50page%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Output of a trained model with Tensorflow.
+ On the four graphs, the position is the same (0.2).
+ The speed of the agent is different and goes linearly from 0.01 to 0.04 between
+ A and D.
+ Note that the range of possible positions goes from -1.2 to 0.6, and the
+ speed from -0.07 to 0.07.
+ What we observe is that if the agent is not fast enough at this point,
+ it prefers a negative acceleration to find itself in a position where a
+ positive acceleration will lead to the flag.
+ It is sensible because keeping on accelerating may be useless because of
+ gravity.
+ Conversely, if its speed is high enough, it tries to continue accelerating
+ to reach the flag.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename figure/fig12.PNG
+	lyxscale 50
+	width 50page%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\emph on
+Output of a trained model with the Tensorflow implementation.
+ On the four graphs, the position is the same (-0.5, which is near to the
+ initial position).
+ The speed of the agent is changes and is -0.07 in A, -0.02 in B, 0.02 in C,
+ and 0.07 in D.
+ Note that the range of possible positions goes from -1.2 to 0.6, and the
+ speed from -0.07 to 0.07.
+ Here the policy does not make sense at all.
+ Whatever the speed is, the agent tries to go backward, while its speed
+ should let it reaches the flag for D at least, and maybe also for C.
+ In A and B it makes sense to go backward.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+These results were optimistic but still lacking.
+ We continued the debugging process by observing the evolution of weights
+ for particular layers of the network, in both the PyTorch and Tensorflow
+ implementations.
+ The last observation we discovered was that in some cases, after 90000
+ training steps, nearly 90% of the weights of the Pytorch network become
+ zero.
+ This is very interesting, and finding its cause will be our next objective.
+\end_layout
+
+\begin_layout Subsection
+Evaluation
+\end_layout
+
+\begin_layout Standard
+Evaluating our policies in the sepsis case requires careful consideration,
+ as we deal with some important challenges: firstly, the policy that generated
+ the data available in the MIMIC dataset is unknown, and hard to estimate
+ correctly, as it needs to approximate the behavior of different clinicians,
+ with different decision making processes, in a complex state-space.
+ Secondly, we are dealing with continuous state and action spaces, and as
+ such the computation of importance weights has to be done with integrals
+ instead of the classical sum.
+ Thirdly, our histories are limited in step size (some going as low as 4
+ steps.
+ DR and WDR estimators where implemented in the following way:
+\end_layout
+
+\begin_layout Paragraph
+Clinician policy estimation: 
+\end_layout
+
+\begin_layout Standard
+To obtain a reliable clinician policy estimation, we first studied the case
+ stemming from a discretization of states and actions.
+ Following previous work by Komorowski et al.
+ (2016) 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "komorowski2016deepRLSepsis"
+
+\end_inset
+
+, we solved an MDP on the sepsis case with 750 discrete states and 25 discrete
+ actions over intravenous fluid and vasopressor dosage.
+ We obtained a Q table that will be denominated 
+\emph on
+Q clinician, 
+\emph default
+from which it is possible to obtain the policy for each state s by computing
+ 
+\begin_inset Formula $argmax_{a}Q_{clinician}(s,a)$
+\end_inset
+
+.
+ The policy obtained here is discrete, which is incompatible with our continuous
+ approach.
+ To be able to make use of this policy as our 
+\begin_inset Formula $\pi_{behavior}$
+\end_inset
+
+, we tried multiple approaches.
+ 
+\end_layout
+
+\begin_layout Itemize
+We transformed the policy to a continuous one by thinking of it as a continuous
+ Dirac's delta on the center of the bin corresponding to the action of maximum
+ Q value.
+ 
+\end_layout
+
+\begin_layout Itemize
+The value of 
+\begin_inset Formula $\pi_{behavior}$
+\end_inset
+
+ for a particular state and action was estimated as the number of actions
+ in the dataset belonging to that bin over the total number of actions.
+ This corresponds to a discretization of the states and actions that enter
+ the pi_behavior function, and was done with a KD-Tree, a structure that
+ allows fast lookups of nearest-neighbors.
+\end_layout
+
+\begin_layout Itemize
+We generated a continuous approximation over the state and action space
+ by overlapping gaussians centered on each centroid of the original clustering,
+ and with 
+\begin_inset Formula $\sigma=d_{sa}/4$
+\end_inset
+
+, 
+\begin_inset Formula $d_{sa}$
+\end_inset
+
+ being the mean distance between each 52-dimensional centroid.
+ The gaussians were scaled by the value of the discrete 
+\begin_inset Formula $Q_{clinician}$
+\end_inset
+
+ for each centroid.
+\end_layout
+
+\begin_layout Standard
+In Doina et al., 2000, it is mentioned that the behavior policy must be 
+\emph on
+soft
+\emph default
+, meaning that it must have a non-zero probability of selecting every action
+ in each state.
+ This is arguably the reason why, as can be seen in the results section,
+ our first approach performed erratically.
+\end_layout
+
+\begin_layout Paragraph
+Evaluation policy: 
+\end_layout
+
+\begin_layout Standard
+The output of the ICNN gives us the value of Q for a particular continuous
+ state and action.
+ To approximate the value of 
+\begin_inset Formula $\pi_{e}$
+\end_inset
+
+, we then compute:
+\begin_inset Formula 
+\[
+\pi_{e}(s,a)=\frac{Q(s,a)-min_{a}Q(s,a)}{\int_{a}Q(s,a)-min_{a}Q(s,a)da}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Where the division by the integral is meant to normalize 
+\begin_inset Formula $Q(s,a)-min_{a}Q(s,a)$
+\end_inset
+
+, and thus approximate a probability distribution over actions, necessary
+ characteristic of stochastic policies.
+\end_layout
+
+\begin_layout Paragraph
+Estimations of Q and V:
+\end_layout
+
+\begin_layout Standard
+The WDR requires an estimation of the Q and V functions to compute the Approxima
+te Model part of its equation.
+ In our case, the ICNN is directly yielding an estimation of Q, 
+\begin_inset Formula $\hat{q}_{icnn}$
+\end_inset
+
+.
+ As or 
+\begin_inset Formula $\hat{v}$
+\end_inset
+
+, we calculate the following:
+\begin_inset Formula 
+\[
+\hat{v}(s)=\int\pi_{e}(s,a)\hat{q}_{icnn}(s,a)da
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This respects the definition of the value function in the continuous case,
+ but provides an estimation that depends on the accuracy of the ICNN.
+ 
+\end_layout
+
+\begin_layout Paragraph
+Implementation details:
+\end_layout
+
+\begin_layout Standard
+The WDR calculation was performed with the course's provided function, with
+ minor alterations to facilitate the handling of continuous functions instead
+ of tables.
+ The minimization of the Q function was performed so as to leverage the
+ concavity of the network: given that property, the minimum of the Q function
+ lies at one of the 4 corners of the square action space.
+ The minimizing function was then optimized so as to only compute those
+ four values and return the minimum.
+ The arg-maximization of the network is also facilitated by the ICNN properties.
+ We applied SGD to converge towards the maximum of the net by tweaking PyTorch
+ properties on the input parameters corresponding to the actions.
+ 
+\end_layout
+
+\begin_layout Standard
+One important aspect to remark is that the integral computation can be very
+ slow.
+ It involves computing the Riemann sum, a numerical approximation of the
+ integral on the square corresponding to the action space.
+ For that computation, it is required to do forward passes over the icnn
+ for each point of a predefined grid over the action space.
+ We worked on a 20x20 grid, which translates to 400 forward passes each
+ time an integral has to be calculated.
+ This proved to be extremely costly, so another approach was implemented:
+ a simple fully connected neural network for integral prediction.
+ The idea was to train this network on integrals computed by the trained
+ version of the ICNN previous to the evaluation step, and then use the integral-
+predicting network instead of calculating the Riemann sum.
+ The network was built with 3 hidden layers of 20 neurons each.
+ This network approached the integral of the trained network in a mediocre
+ way, achieving an 
+\begin_inset Formula $R^{2}$
+\end_inset
+
+ score on the testing set of 0.52.
+ It however ran much faster than the original WDR approach, managing to
+ obtain an approximately 2 fold increase in computation time on average,
+ after 5 computations of 100 patients each.
+\end_layout
+
+\begin_layout Standard
+This evaluation setup was tested on the Sepsis case as well as the MountainCarCo
+ntinuous environment.
+ In the latter, we used the winning Actor-Critic solution available on the
+ OpenAI Gym as our 
+\begin_inset Formula $\pi_{b}$
+\end_inset
+
+ and history generator.
+ We generated histories as we trained the system, and after training, we
+ extracted the policy estimator object of this solution and used its underlying
+ gaussian distribution as our 
+\begin_inset Formula $\pi_{b}$
+\end_inset
+
+.
+ This is possible because the mentioned solution generates estimations of
+ 
+\begin_inset Formula $\mu$
+\end_inset
+
+ and 
+\begin_inset Formula $\sigma$
+\end_inset
+
+ values for a gaussian distribution over actions, for each state and then
+ randomly samples from that distribution to obtain the final action.
+ With that in mind, we generated 300 histories of 343 to 999 timesteps each,
+ and calculated DR and WDR estimators with that dataset.
+\end_layout
+
+\begin_layout Paragraph
+Results
+\end_layout
+
+\begin_layout Standard
+Evaluating the policies proved to be costly on a time complexity perspective,
+ but the results are interesting.
+ We applied the methods described in the previous section to the Sepsis
+ implementation, MountainCar Pytorch and MountainCar Tensorflow.
+ We compared the obtained values to baselines values that we believe to
+ be accurate: for the sepsis case, we looked at the sum of the values for
+ each state derived from the 
+\begin_inset Formula $V_{clinician}$
+\end_inset
+
+ approximated in Homework 3, weighted by the frequency of each state.
+ For the mountaincar case, the baseline is the Value estimation for the
+ initial state generated by the Actor-Critic implementation.
+ The results were as follows:
+\end_layout
+
+\begin_layout Standard
+\align center
+\begin_inset Tabular
+<lyxtabular version="3" rows="6" columns="4">
+<features tabularvalignment="middle">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<column alignment="center" valignment="top">
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Sepsis
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+MountainCar PyTorch
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+MountainCar Tensorflow
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+DR
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+5.592
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-1.221
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-1.32
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+WDR - Dirac
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+12.441
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-1.492
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-0.711
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+WDR - Gaussians
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+9.875
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-1.
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-1.455
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+WDR - integral prediction
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+8.232
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+NA
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+NA
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+Baseline
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+7.437
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-2.008
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" topline="true" bottomline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Plain Layout
+-2.008
+\end_layout
+
+\end_inset
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+It is interesting to see that the Baseline for the MountainCar case is negative
+ even though the average reward for the episodes is superior to 90.
+ The WDR - Gaussian implementation for MountainCar gets close to the baseline,
+ while the Dirac version generates a lower value.
+ This is probably the case because The Dirac version uses a behavior policy
+ that favors high values of rho (not a soft policy).
+ On the Sepsis case, the observations show that the integral prediction
+ approach obtains similar results than the baseline, while the Dirac approach
+ has a high value that is questionable.
+ The values of these policies are not extremely representative, as the network
+ generating them has not been fixed yet to generate meaningful u-curves.
+\end_layout
+
+\begin_layout Section
+Conclusion 
+\end_layout
+
+\begin_layout Standard
+Unfortunately, we were unable to achieve positive results in the task we
+ undertook.
+ While it seems sound theoretically, deep ICNNs proved quite difficult to
+ correctly build and train.
+ These ideas need more exploration.
+ On the VAE side, more time should be devoted to exploring the variational
+ recurrent autoencoders 
+\begin_inset CommandInset citation
+LatexCommand cite
+key "fabius2014variational,krishnan2017structured"
+
+\end_inset
+
+.
+ We observed that on supervised learning tasks, the ICNN shows correct performan
+ce, but becomes somewhat erratic on the Reinforcement Learning tasks.
+ Analyzing the behavior of the ICNN on simple RL tasks was very instructive,
+ and gave us a better understanding of the general behavior of the architecture.
+ It is interesting to remark that in the MountainCar case, the policy learned
+ tends to find a path to the reward that is not conventional: it does not
+ find the optimal path, but tries to get itself to a state where it knows
+ the sequence of actions to perform to get to the goal.
+ 
+\begin_inset Newline newline
+\end_inset
+
+We are not discouraged by the sepsis results, as we are far from convinced
+ that the ICNN itself is not suitable for the Sepsis case.
+ Future work includes doing a deeper analysis of the weight evolution, migrating
+ code to Tensorflow for better compatibility with the second implementation,
+ iterating on the ICNN architecture and re-opening the VAE line of work.
+\end_layout
+
+\begin_layout Section
+References
+\end_layout
+
+\begin_layout Standard
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+bibfiles "BibTex_final_project"
+options "plain"
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
